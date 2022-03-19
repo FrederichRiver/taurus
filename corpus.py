@@ -15,7 +15,7 @@ from pdfminer.pdfpage import PDFTextExtractionNotAllowed, PDFPage
 # 去除无用字符
 # 输出语料 
 
-CORPUS_PATH = '/data1/file_data/report/industry_report/'
+PDF_PATH = '/data1/file_data/report/industry_report/'
 CORPUS_CLASS = ['医药商业', '医疗服务', '医疗器械']
 corpus_file = '/home/fred/Documents/dev/corpus_tool/corpus/txt_133.txt'
 GBK = 'GBK'
@@ -64,7 +64,8 @@ def pdf2text(pdf_file: str) -> list:
     # 检测文档是否提供txt转换，不提供就忽略
     if not doc.is_extractable:
         # raise PDFTextExtractionNotAllowed
-        print(f"{pdf_file}: PDFTextExtractionNotAllowed")
+        tmp_name = pdf_file.split('/')[-1]
+        print(f"{tmp_name}: PDFTextExtractionNotAllowed")
     else:
         # 创建PDf 资源管理器 来管理共享资源
         rsrcmgr = PDFResourceManager()
@@ -156,7 +157,7 @@ def work_flow_1():
     """
     # 获取
     txt_path = "/home/fred/Documents/dev/taurus/corpus"
-    pdf_path_list = [os.path.join(CORPUS_PATH, c) for c in CORPUS_CLASS]
+    pdf_path_list = [os.path.join(PDF_PATH, c) for c in CORPUS_CLASS]
     for p in pdf_path_list:
         file_list = get_file_list(p)
         for pdf_file in file_list:
@@ -173,7 +174,7 @@ def work_flow_1():
 
 def work_flow_2():
     # 获取
-    pdf_path = os.path.join(CORPUS_PATH, '医药商业')
+    pdf_path = os.path.join(PDF_PATH, '医药商业')
     pdf = os.path.join(pdf_path, "2022年医药行业策略报告：回本溯源，看好药品行业的长期投资机会-2021-12-09.pdf")
     pdf_struc_view(pdf)
 
