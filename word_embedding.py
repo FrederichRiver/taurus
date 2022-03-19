@@ -1,5 +1,12 @@
 #!/usr/bin/python3
 
+import jieba
+import os
+import torch
+from collections import Counter
+from torch import nn, tensor
+
+
 EMBEDDING_DIM = 128 #词向量维度
 PRINT_EVERY = 100 #可视化频率
 EPOCHES = 1000 #训练的轮数
@@ -15,7 +22,12 @@ VOCABULARY_SIZE = 50000
 
 # 读取字典
 
+DICT_FILE = '/home/fred/Documents/dev/taurus/dict.txt'
+
 def get_dict(dict_file: str, th=0):
+    """
+    从jieba分词的词典文件构造词典dict。
+    """
     voc = []
     freq = []
     with open(dict_file, 'r') as d:
@@ -25,12 +37,42 @@ def get_dict(dict_file: str, th=0):
             freq.append(int(f))
     return voc, freq
 
-DICT_FILE = '/home/fred/Documents/dev/taurus/dict.txt'
+def generate_dict(corpus: str) -> dict:
+    """
+    通过语料生成词典dict
+    """
+    # d { w: c}
+    d = {}
+    # r is list of words
+    r = list(jieba.cut(corpus))
+    for item in r:
+        if item in d.keys():
+            d[item] += 1
+        else:
+            d[item] = 1
+    return d
 
-# v, f = get_dict(DICT_FILE)
+def merge_dict(d1: dict, d2: dict) -> dict:
+    """
+    合并两个字典
+    """
+    for k, v in d1.items():
+        if k in d2.keys():
+            d2[k] += v
+        else:
+            d2[k] = v
+    return d2
 
-import torch
-from torch import nn, tensor
+def order_dict(d: dict, size: int) -> dict:
+    new_d = {}
+    m = max(list(d.values()))
+    while len(new_d) < size:
+        for k, v in d.items():
+            if v > m:
+                new_d[k] = v
+                d.pop(k)
+        m -= 1
+    return new_d
 
 class SkipGram(nn.Module):
     def __init__(self, n_vocab: int, n_embed: int, noise_dist):
@@ -71,8 +113,6 @@ class SkipGram(nn.Module):
         noise_vectors = self.out_embed(noise_words).view(size, N_SAMPLES, self.n_embed)
         return noise_vectors
 
-from torch import tensor
-
 class NegativeSamplingLoss(nn.Module):
     """
     loss function of negative-sampling.\n
@@ -105,6 +145,7 @@ class WordEmbeddingDataset(Dataset):
         word_freqs: word freq in list.
         """
         super(WordEmbeddingDataset, self).__init__()
+        # data的维度 (m, n) m为词数，n为词向量的维度
         self.data = torch.Tensor(data).long()  # 解码为词表中的索引
         self.word_freqs = torch.Tensor(word_freqs)  # 词频率
 
@@ -114,38 +155,63 @@ class WordEmbeddingDataset(Dataset):
 
     def __getitem__(self, idx):
         # 根据idx返回
-        # center word in one-hot tensor
+        # center word in one-hot tensor (1, n_embedding)
         center_word = self.data[idx]  # 找到中心词
-        pos_indices = list(range(idx - WINDOW_SIZE, idx)) + list(
-            range(idx + 1, idx + WINDOW_SIZE + 1))  # 中心词前后各C个词作为正样本
-        pos_indices = list(filter(lambda i: i >= 0 and i < len(self.data), pos_indices))  # 过滤，如果索引超出范围，则丢弃
-        pos_words = self.data[pos_indices]  # 周围单词
-        # 根据 变换后的词频选择 K * 2 * C 个负样本，True 表示可重复采样
+        # 对两个list求并集，WINDOW_SIZE是窗口宽度的一半。中心词前后各WINDOW_SIZE个词作为正样本
+        pos_indices = list(range(idx - WINDOW_SIZE, idx)) + list(range(idx + 1, idx + WINDOW_SIZE + 1))  
+        # 过滤，如果索引超出范围，则丢弃
+        pos_indices = list(filter(lambda i: i >= 0 and i < len(self.data), pos_indices))  
+        # 周围单词 (n_pos_indices, n_embedding)
+        pos_words = self.data[pos_indices]
+        # multinomial按词频权重进行采样N_SAMPLES×pos_words.shape[0]个负样本。
+        # neg_words 维度(N_SAMPLES * pos_words.shape[0], n_embedding)
         neg_words = torch.multinomial(self.word_freqs, N_SAMPLES * pos_words.shape[0], True)
-
         return center_word, pos_words, neg_words
 
+def word_filter(words: list, th: int):
+    word_count = Counter(words)
+    result = [w for w in words if word_count[w]>th]
+    return result
 
-def count_word_freq():
-    pass
+
+def count_word_freq(word_seq: list) -> dict:
+    """
+    word_seq是以词典定义的词序列，用count_word_freq方法用于统计词频以供生成负样本。
+    """
+    # {"word": count}
+    int_word_counts = Counter(word_seq)
+    # 语料中的总词数
+    total_count = len(word_seq)
+    # 计算词频
+    word_freqs = {w: c/total_count for w, c in int_word_counts.items()}
+    return word_freqs
 
 
 CORPUS = "经济规模达到114.4万亿元，人均GDP按年平均汇率折算达12551美元，超过世界人均GDP水平；预计占世界经济比重超过18%，对世界经济增长贡献率达到25%左右……开局之年，中国经济实力、社会生产力和综合国力都上了一个新台阶，这是一个实打实的“开门红”。"
 
+
+def test():
+    d = generate_dict(CORPUS)
+    print(d)
 
 def train_word_vector(args: dict):
     # Read corpus
     from jieba import cut
 
     result = cut(CORPUS)
-    print(list(result))
+    r = list(result)
     # statistic word freqs
+    wf = Counter(list(result))
+    # print(wf)
+    w = word_filter(r, 3)
+    print(w)
     # Generate dataset
     # model definition
     # loss function definition
     # training process
-    pass
+    
 
 if __name__ == '__main__':
     import sys
-    train_word_vector(sys.argv)
+    # train_word_vector(sys.argv)
+    test()
