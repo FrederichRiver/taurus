@@ -191,8 +191,11 @@ CORPUS = "经济规模达到114.4万亿元，人均GDP按年平均汇率折算�
 
 
 def test():
-    d = generate_dict(CORPUS)
-    print(d)
+    # d = generate_dict(CORPUS)
+    dict_file = '/home/fred/Documents/dev/taurus/zh_dict.txt'
+    jieba.load_userdict(dict_file)
+    d = jieba.cut(CORPUS)
+    print('/'.join(list(d)))
 
 def train_word_vector(args: dict):
     # Read corpus

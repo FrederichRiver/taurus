@@ -2,3 +2,4 @@ __pycache__/*
 corpus/*
 *.txt
 test.*
+log*

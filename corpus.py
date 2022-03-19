@@ -10,13 +10,17 @@ from pdfminer.converter import PDFPageAggregator
 from pdfminer.layout import LAParams, LTTextBox
 from pdfminer.pdfpage import PDFTextExtractionNotAllowed, PDFPage
 
+from word_statistcs import PROJ_PATH
+
 # 读取文本文件，
 # 文本清理
 # 去除无用字符
 # 输出语料 
 
 PDF_PATH = '/data1/file_data/report/industry_report/'
-CORPUS_CLASS = ['医药商业', '医疗服务', '医疗器械']
+TOTAL_CLASS = ['医药商业', '医疗服务', '医疗器械', '医疗行业', '医药制造']
+CORPUS_CLASS = ['医疗器械', '医疗行业', ]
+PROJ_PATH = "/home/fred/Documents/dev/taurus"
 corpus_file = '/home/fred/Documents/dev/corpus_tool/corpus/txt_133.txt'
 GBK = 'GBK'
 GB = 'GB2312'
@@ -115,6 +119,7 @@ def save_txt(txt_file: str, txt: list, th=20):
         for item in txt:
             if len(item) > th:
                 f.write(f"{item}\n")
+    return 0 if os.path.getsize(txt_file) == 0 else 1
 
 def pdf_struc_view(pdf_file: str):
     praser = PDFParser(fp = open(pdf_file, 'rb'))
@@ -157,6 +162,7 @@ def work_flow_1():
     """
     # 获取
     txt_path = "/home/fred/Documents/dev/taurus/corpus"
+    log_file = os.path.join(PROJ_PATH, 'log_file')
     pdf_path_list = [os.path.join(PDF_PATH, c) for c in CORPUS_CLASS]
     for p in pdf_path_list:
         file_list = get_file_list(p)
@@ -169,8 +175,11 @@ def work_flow_1():
             txt = []
             for sec in tmp_txt:
                 txt.append(txt_clean(sec))
-            save_txt(txt_file, txt)
-            print(f'{pdf_file}')
+            if save_txt(txt_file, txt):
+                print(f'{pdf_file}')
+            else:
+                with open(log_file, 'a') as f:
+                    f.write(f"{pdf}\n")
 
 def work_flow_2():
     # 获取
