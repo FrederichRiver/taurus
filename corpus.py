@@ -19,7 +19,7 @@ from word_statistcs import PROJ_PATH
 
 PDF_PATH = '/data1/file_data/report/industry_report/'
 TOTAL_CLASS = ['医药商业', '医疗服务', '医疗器械', '医疗行业', '医药制造']
-CORPUS_CLASS = ['医疗器械', '医疗行业', ]
+CORPUS_CLASS = ['医药制造', ]
 PROJ_PATH = "/home/fred/Documents/dev/taurus"
 corpus_file = '/home/fred/Documents/dev/corpus_tool/corpus/txt_133.txt'
 GBK = 'GBK'
@@ -168,18 +168,23 @@ def work_flow_1():
         file_list = get_file_list(p)
         for pdf_file in file_list:
             pdf = os.path.join(p, pdf_file)
-            txt_title = pdf_file[:-3] + 'txt'
-            txt_file_name = title_clean(txt_title)
-            txt_file = os.path.join(txt_path, txt_file_name)
-            tmp_txt = pdf2text(pdf)
-            txt = []
-            for sec in tmp_txt:
-                txt.append(txt_clean(sec))
-            if save_txt(txt_file, txt):
-                print(f'{pdf_file}')
-            else:
+            try:    
+                txt_title = pdf_file[:-3] + 'txt'
+                txt_file_name = title_clean(txt_title)
+                txt_file = os.path.join(txt_path, txt_file_name)
+                tmp_txt = pdf2text(pdf)
+                txt = []
+                for sec in tmp_txt:
+                    txt.append(txt_clean(sec))
+                if save_txt(txt_file, txt):
+                    print(f'{pdf_file}')
+                else:
+                    with open(log_file, 'a') as f:
+                        f.write(f"{pdf}\n")
+            except:
                 with open(log_file, 'a') as f:
-                    f.write(f"{pdf}\n")
+                        f.write(f"{pdf}\n")
+
 
 def work_flow_2():
     # 获取
