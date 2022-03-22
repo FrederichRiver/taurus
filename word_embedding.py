@@ -5,6 +5,8 @@ import os
 import torch
 from collections import Counter
 from torch import nn, tensor
+import numpy as np
+import random
 
 
 EMBEDDING_DIM = 128 #词向量维度
@@ -24,18 +26,58 @@ VOCABULARY_SIZE = 50000
 
 DICT_FILE = '/home/fred/Documents/dev/taurus/dict.txt'
 
-def get_dict(dict_file: str, th=0):
-    """
-    从jieba分词的词典文件构造词典dict。
-    """
-    voc = []
-    freq = []
-    with open(dict_file, 'r') as d:
-        while l := d.readline():
-            w, f, _ = l.split(' ')
-            voc.append(w)
-            freq.append(int(f))
-    return voc, freq
+class WordDict(object):
+    def __init__(self, dict_file: str) -> None:
+        self.vocab = {}
+        if os.path.exists(dict_file):
+            self.vocab = self.load_dict(dict_file)
+        voc = set(self.vocab.keys())
+        # 通过词查询index
+        self.vocab2int = {w: c for c, w in enumerate(voc) }
+        # 通过index查询词汇
+        self.int2vocab = {c: w for c, w in enumerate(voc) }
+        # 后续改变词汇顺序将破坏词典及词向量
+
+    @property
+    def voc_len(self):
+        return self.__len__()
+
+    def __len__(self):
+        return len(self.vocab)
+
+    def load_dict(self, dict_file: str) -> dict:
+        """
+        加载dict
+        """
+        with open(dict_file, 'r') as d:
+            while l := d.readline():
+                w, f = l.split(' ')
+                self.vocab[w] = int(f)
+        return self.vocab
+
+    def embedding(self, seq: list) -> list:
+        """
+        将文本词汇转换为one hot embedding
+        """
+        return [self.vocab2int(w) for w in seq]
+
+    def word_stat(self, corpus: list) -> dict:
+        # 以{word: count}的形式对语料进行统计
+        word_count = Counter(corpus)
+        total = len(word_count)
+        # 将频数转换为频率
+        word_freq = {w: c / total for w, c in word_count.items()}
+        return word_freq
+
+    def drop_word(self, seq: list, wf: dict, t=1e-5) -> list:
+        """
+        seq : 将词汇经过查表后获得的index序列
+        wf  : 经统计得到的词频dict
+        fseq: 经drop算法过滤后的index序列
+        """
+        prob_drop = {w: 1-np.sqrt(t / wf[w]) for w in seq}
+        fseq = [w for w in seq if random.random()<(1-prob_drop[w])]
+        return fseq
 
 def generate_dict(corpus: str) -> dict:
     """
@@ -199,15 +241,10 @@ def test():
 
 def train_word_vector(args: dict):
     # Read corpus
-    from jieba import cut
-
-    result = cut(CORPUS)
-    r = list(result)
-    # statistic word freqs
-    wf = Counter(list(result))
-    # print(wf)
-    w = word_filter(r, 3)
-    print(w)
+    # Generate dict
+    dict_file = '/home/fred/Documents/dev/taurus/zh_dict.txt'
+    # wd = get_dict(dict_file, 10)
+    # print(wd)
     # Generate dataset
     # model definition
     # loss function definition
@@ -216,5 +253,4 @@ def train_word_vector(args: dict):
 
 if __name__ == '__main__':
     import sys
-    # train_word_vector(sys.argv)
-    test()
+    train_word_vector(sys.argv)
